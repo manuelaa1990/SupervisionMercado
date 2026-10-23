@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0b0f14">
+  <title>Flota de refrigeración · Hipermercado</title>
+  <link rel="stylesheet" href="css/estilos.css">
+</head>
+<body>
+  <div class="fondo" aria-hidden="true"></div>
+
+  <header class="cabecera">
+    <div class="marca">
+      <div class="marca-icono" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2v20M4.2 6.5l15.6 11M19.8 6.5l-15.6 11M8 4l4 3 4-3M8 20l4-3 4 3M3.5 10l4.7 1.2 1.2 4.7M20.5 10l-4.7 1.2-1.2 4.7"/>
+        </svg>
+      </div>
+      <div class="marca-texto">
+        <p class="eyebrow">Supervisión de flota</p>
+        <h1 id="tituloFlota">Hipermercado · 20 equipos</h1>
+        <p class="subtiulo">Solo lo que necesita atención. El proceso queda en segundo plano.</p>
+      </div>
+    </div>
+
+    <div class="cabecera-derecha">
+      <div class="reloj">
+        <span id="relojHora">--:--:--</span>
+        <small id="relojFecha">—</small>
+      </div>
+      <button type="button" class="btn" id="btnRegistro">
+        <span aria-hidden="true">▤</span> Registro de fallas
+      </button>
+      <button type="button" class="btn btn-primario" id="btnCrear">
+        <span aria-hidden="true">＋</span> Crear cuadro
+      </button>
+    </div>
+  </header>
+
+  <section class="barra-resumen" aria-label="Resumen de la flota">
+    <div class="chips-resumen" id="chipsResumen"></div>
+
+    <div class="barra-herramientas">
+      <label class="buscador">
+        <span aria-hidden="true">⌕</span>
+        <input type="search" id="buscarEquipo" placeholder="Buscar equipo o pasillo…" autocomplete="off">
+      </label>
+      <div class="simulacion" id="simulacion">
+        <span class="punto-sim" id="puntoSim" aria-hidden="true"></span>
+        <span id="textoSim">Simulación activa</span>
+        <button type="button" class="btn-mini" id="btnPausa">Pausar</button>
+        <button type="button" class="btn-mini" id="btnFalla">Provocar falla</button>
+        <button type="button" class="btn-mini btn-mini-peligro" id="btnReiniciar">Reiniciar</button>
+      </div>
+    </div>
+  </section>
+
+  <main class="contenido">
+    <div class="grid-equipos" id="gridEquipos" aria-live="polite"></div>
+    <div class="vacio" id="sinResultados" hidden>
+      <strong>No hay equipos con ese filtro.</strong>
+      <span>Prueba con otro estado o borra la búsqueda.</span>
+    </div>
+  </main>
+
+  <div class="overlay" id="overlay" hidden></div>
+
+  <aside class="drawer" id="drawer" aria-hidden="true" aria-labelledby="drawerTitulo">
+    <div id="drawerContenido"></div>
+  </aside>
+
+  <div class="modal" id="modalCrear" role="dialog" aria-modal="true" aria-labelledby="crearTitulo" hidden>
+    <div class="modal-caja">
+      <div class="modal-cabecera">
+        <div>
+          <p class="eyebrow">Nuevo equipo</p>
+          <h2 id="crearTitulo">Crear cuadro</h2>
+          <p>El cliente verá solo la temperatura del espacio y el estado.</p>
+        </div>
+        <button type="button" class="icono-cerrar" data-cerrar-modal="modalCrear" aria-label="Cerrar">×</button>
+      </div>
+
+      <form id="formCrear" class="formulario">
+        <div class="campo">
+          <label for="nombreEquipo">Nombre del cuadro</label>
+          <input id="nombreEquipo" name="nombre" type="text" required maxlength="60" placeholder="Ej. Isla 3 · Congelados">
+        </div>
+
+        <div class="campo">
+          <label for="ubicacionEquipo">Ubicación</label>
+          <input id="ubicacionEquipo" name="ubicacion" type="text" maxlength="60" placeholder="Ej. Pasillo 4">
+        </div>
+
+        <div class="fila-campos">
+          <div class="campo">
+            <label for="refrigeranteEquipo">Refrigerante</label>
+            <select id="refrigeranteEquipo" name="refrigerante"></select>
+          </div>
+          <div class="campo">
+            <label for="expansionEquipo">Expansión</label>
+            <select id="expansionEquipo" name="expansion"></select>
+          </div>
+        </div>
+
+        <fieldset class="campo campo-tipos">
+          <legend>Tipo de equipo</legend>
+          <div class="tipos-crear" id="tiposCrear"></div>
+        </fieldset>
+
+        <div class="fila-campos">
+          <div class="campo">
+            <label for="objetivoEquipo">Temperatura objetivo (°C)</label>
+            <input id="objetivoEquipo" name="objetivo" type="number" step="0.5" required>
+            <small id="ayudaObjetivo">Rango sugerido para el tipo seleccionado.</small>
+          </div>
+          <div class="campo">
+            <label for="aceiteEquipo">Lubricante</label>
+            <select id="aceiteEquipo" name="aceite"></select>
+          </div>
+        </div>
+
+        <details class="avanzado">
+          <summary>Opciones avanzadas</summary>
+          <div class="fila-campos">
+            <div class="campo">
+              <label for="compresorEquipo">Compresor</label>
+              <select id="compresorEquipo" name="compresor"></select>
+            </div>
+            <div class="campo">
+              <label for="sensorEquipo">Sensor de espacio</label>
+              <select id="sensorEquipo" name="sensorEspacio">
+                <option value="temp2">T. evaporador (temp2)</option>
+                <option value="temp1">T. succión (temp1)</option>
+                <option value="temp5">T. ambiente (temp5)</option>
+              </select>
+            </div>
+          </div>
+          <p class="nota-avanzada">El motor de diagnóstico usa las 5 temperaturas y las 2 presiones. El cliente solo ve la temperatura del sensor de espacio.</p>
+        </details>
+
+        <div class="modal-pie">
+          <button type="button" class="btn" data-cerrar-modal="modalCrear">Cancelar</button>
+          <button type="submit" class="btn btn-primario">Crear cuadro</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal modal-ancho" id="modalRegistro" role="dialog" aria-modal="true" aria-labelledby="registroTitulo" hidden>
+    <div class="modal-caja">
+      <div class="modal-cabecera">
+        <div>
+          <p class="eyebrow">Trazabilidad</p>
+          <h2 id="registroTitulo">Registro de fallas</h2>
+          <p>Cada falla conserva su estado, hora de inicio, corrección y reapariciones.</p>
+        </div>
+        <button type="button" class="icono-cerrar" data-cerrar-modal="modalRegistro" aria-label="Cerrar">×</button>
+      </div>
+
+      <div class="registro-filtros">
+        <div class="campo">
+          <label for="filtroEstado">Estado</label>
+          <select id="filtroEstado">
+            <option value="todas">Todas</option>
+            <option value="activa">Activas</option>
+            <option value="reconocida">Reconocidas</option>
+            <option value="corregida">Corregidas</option>
+          </select>
+        </div>
+        <div class="campo">
+          <label for="filtroEquipo">Equipo</label>
+          <select id="filtroEquipo"><option value="todos">Todos</option></select>
+        </div>
+        <div class="registro-acciones">
+          <button type="button" class="btn" id="btnExportar">Exportar CSV</button>
+        </div>
+      </div>
+
+      <div class="tabla-registro-caja">
+        <table class="tabla-registro">
+          <thead>
+            <tr>
+              <th>Inicio</th>
+              <th>Equipo</th>
+              <th>Falla</th>
+              <th>Estado</th>
+              <th>Fin</th>
+              <th>Duración</th>
+              <th>Reapariciones</th>
+            </tr>
+          </thead>
+          <tbody id="registroCuerpo"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="js/config.js"></script>
+  <script src="js/simulacion.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
