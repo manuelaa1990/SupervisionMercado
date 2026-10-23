@@ -767,6 +767,15 @@ h1 {
 .sim-fila select { flex: 1 1 150px; min-width: 0; }
 .sim-fila .btn-mini { min-height: 30px; }
 
+.zona-peligro {
+  padding: 11px 12px;
+  border: 1px dashed rgba(255, 95, 99, .28);
+  border-radius: 12px;
+  background: rgba(255, 95, 99, .035);
+}
+.zona-peligro p { margin: 5px 0 9px; color: var(--muted); font-size: 10.5px; }
+.zona-peligro .btn-mini { min-height: 30px; }
+
 .sin-datos-texto { color: var(--muted); font-size: 11px; }
 
 /* -------------------------------- MODALES -------------------------------- */

@@ -456,8 +456,15 @@
         '</div>' +
       '</section>';
 
+    const eliminacion =
+      '<section class="zona-peligro">' +
+        '<h3 class="seccion-titulo">Eliminar cuadro</h3>' +
+        '<p>Quita este cuadro de la flota y borra sus lecturas y su historial de alertas. No se puede deshacer.</p>' +
+        '<button type="button" class="btn-mini btn-mini-peligro" data-accion="eliminar-equipo">Eliminar cuadro</button>' +
+      '</section>';
+
     ids.drawerContenido.innerHTML = cabecera +
-      '<div class="drawer-cuerpo">' + principal + seccionAlertas + seccionProceso + ficha + historialSeccion + simulacion + '</div>';
+      '<div class="drawer-cuerpo">' + principal + seccionAlertas + seccionProceso + ficha + historialSeccion + simulacion + eliminacion + '</div>';
   }
 
   function abrirDrawer(equipoId, silencioso) {
@@ -717,6 +724,23 @@
       FLOTA.aplicarFalla(ui.equipoAbierto, null);
       actualizarTodo();
       toast('Falla corregida. El registro conserva el episodio.');
+      return;
+    }
+
+    if (accion === 'eliminar-equipo') {
+      const id = ui.equipoAbierto;
+      const equipo = FLOTA.equipo(id);
+      if (!equipo) return;
+      const confirmado = confirm('¿Eliminar el cuadro “' + equipo.nombre + '”?\n\nSe borrarán sus lecturas y su historial de alertas. Esta acción no se puede deshacer.');
+      if (!confirmado) return;
+      const eliminado = FLOTA.eliminarEquipo(id);
+      if (!eliminado) {
+        toast('No se pudo eliminar el cuadro.', true);
+        return;
+      }
+      cerrarDrawer();
+      actualizarTodo();
+      toast('Cuadro eliminado de la flota.');
       return;
     }
 

@@ -901,6 +901,19 @@
     return equipo;
   }
 
+  function eliminarEquipo(equipoId) {
+    const indice = estado.equipos.findIndex((equipo) => equipo.id === equipoId);
+    if (indice < 0) return false;
+
+    estado.equipos.splice(indice, 1);
+    delete estado.lecturas[equipoId];
+    delete estado.seguimiento[equipoId];
+    estado.alertas = estado.alertas.filter((alerta) => alerta.equipoId !== equipoId);
+    guardarEquipos();
+    guardarAlertas(true);
+    return true;
+  }
+
   function aplicarFalla(equipoId, tipo) {
     const equipo = equipoPorId(equipoId);
     if (!equipo) return null;
@@ -1062,6 +1075,7 @@
     reiniciar: reiniciar,
     pausar: pausar,
     crearEquipo: crearEquipo,
+    eliminarEquipo: eliminarEquipo,
     aplicarFalla: aplicarFalla,
     provocarFallaAleatoria: provocarFallaAleatoria,
     reconocerAlerta: reconocerAlerta,

@@ -56,7 +56,8 @@ También se puede abrir `flota/index.html` directamente con `file://`, pero un s
   - recalentamiento, subenfriamiento y relación de compresión calculados;
   - ficha técnica del equipo;
   - historial de fallas del equipo;
-  - modo simulación para aplicar o corregir una falla.
+  - modo simulación para aplicar o corregir una falla;
+  - botón **Eliminar cuadro** con confirmación, que borra el equipo y su historial de alertas.
 - **Registro de fallas** global con filtros por estado y por equipo, y exportación a CSV.
 
 Las variables de proceso están en segundo plano: no se muestran en la tarjeta principal, solo dentro del detalle.
@@ -177,6 +178,7 @@ Dentro del detalle de un equipo:
 
 - **Aplicar:** aplica la falla seleccionada al equipo.
 - **Corregir:** retira la falla simulada; la alerta pasa a “corregida” y se conserva el episodio.
+- **Eliminar cuadro:** pide confirmación y quita el equipo de la flota, junto con sus lecturas y su historial de alertas. Esta acción no se puede deshacer; **Reiniciar** recupera los 20 equipos de ejemplo, pero también borra los cuadros creados.
 
 Las fallas disponibles para simular son:
 
