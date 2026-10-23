@@ -545,8 +545,6 @@ h1 {
   cursor: pointer;
 }
 
-/* AQUÍ ESTÁ LA LLAVE QUE FALTABA ARRIBA */
-
 .icono-cerrar:hover { 
   color: var(--text); 
   border-color: var(--line-fuerte); 
@@ -562,6 +560,7 @@ h1 {
   border-color: rgba(255, 95, 99, .45);
   background: rgba(255, 95, 99, .1);
 }
+
 .detalle-principal {
   position: relative;
   padding: 14px;
