@@ -1,4 +1,4 @@
-# Flota de refrigeración · Hipermercado
+# SupervisionMercado · Flota de refrigeración
 
 Prototipo de consola para supervisar **20 equipos de refrigeración** de un hipermercado. Muestra únicamente la **temperatura del espacio refrigerado** y las fallas que necesitan atención; las otras temperaturas y presiones quedan disponibles en el detalle de cada equipo.
 
@@ -105,12 +105,26 @@ Además se evalúan:
 - **Relación de compresión:** aviso por encima de 10:1 y alarma por encima de 13:1.
 - **Recalentamiento:** rango esperado de 2 a 15 K; fuera de ese rango se genera una sugerencia.
 - **Subenfriamiento:** rango esperado de 2 a 10 K; fuera de ese rango se genera una sugerencia.
+- **Ciclaje de presión de succión:** se toma como referencia la presión mínima de los últimos 12 minutos. Si el mínimo se repite y la presión sube 20 PSI o más antes de volver a bajar, se analiza como posible fuga o problema de contactor.
 - **Aumento repentino de temperatura del espacio:** aviso si sube 5 °C o más en la ventana de 15 minutos.
 - **Aumento repentino de temperatura ambiente:** aviso si sube 4 °C o más en la ventana de 15 minutos.
 - **Frescura de la lectura:** aviso a los 45 segundos sin datos y alarma a los 3 minutos sin datos.
 - **Equipo sin señal:** se muestra como estado “Sin datos” y no se mezcla con las demás alertas del equipo.
 
 Los umbrales están en `js/config.js` para poder ajustarlos.
+
+### Detección de ciclaje y baja presión
+
+El diagnóstico de presión no usa solo un umbral fijo:
+
+1. Toma la **presión de succión más baja de los últimos 12 minutos** y la usa como línea base.
+2. Busca ciclos completos: la presión baja al mínimo, sube al menos **20 PSI** y vuelve al mínimo.
+3. Exige al menos **3 ciclos**, con una duración de **25 a 120 segundos**, y que el último haya terminado en los últimos **3 minutos**.
+4. Compara el mínimo con la presión de saturación esperada para el objetivo del equipo:
+   - si está **5 PSI o más por debajo**, genera **“Ciclaje por baja presión (posible fuga)”**;
+   - si está cerca de lo esperado, genera **“Arranques repetitivos del compresor”**, asociado a contactor, relé o control de arranque.
+
+En el detalle del equipo, dentro de **Variables de proceso**, se muestran la **P. succión mínima** y los **ciclos de succión** detectados. Esto es una ayuda de diagnóstico: no reemplaza una prueba de fugas ni una revisión eléctrica del contactor.
 
 ---
 
@@ -174,6 +188,8 @@ Las fallas disponibles para simular son:
 - relación de compresión alta;
 - recalentamiento bajo o alto;
 - subenfriamiento bajo o alto;
+- ciclaje por baja presión, con mínimo bajo y pulsos de presión;
+- arranques repetitivos por contactor, con pulsos más rápidos;
 - equipo sin señal.
 
 ---
@@ -189,6 +205,7 @@ La simulación arranca con 20 equipos. Algunos vienen con fallas para que se pue
 | `eq-12` · Charcutería | Aumento repentino de temperatura ambiente |
 | `eq-15` · Delicatessen | Recalentamiento bajo |
 | `eq-18` · Cárnicos · Cámara 1 | Equipo sin señal |
+| `eq-20` · Postres · Vitrina | Ciclaje por baja presión (posible fuga) |
 
 También se siembran alertas históricas ya corregidas para `eq-02`, `eq-05`, `eq-09`, `eq-14` y `eq-19`, de modo que el registro no empieza vacío.
 

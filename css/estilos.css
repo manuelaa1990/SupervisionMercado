@@ -724,6 +724,16 @@ h1 {
 .derivado.ok strong { color: var(--green); }
 .derivado.aviso strong { color: var(--amber); }
 .derivado.alarma strong { color: var(--red); }
+.nota-ciclaje {
+  margin: 0 12px 12px;
+  padding: 7px 9px;
+  border-left: 2px solid var(--amber);
+  border-radius: 0 6px 6px 0;
+  color: var(--muted);
+  background: rgba(247, 185, 85, .06);
+  font-size: 10px;
+  line-height: 1.45;
+}
 
 .ficha { border: 1px solid var(--line); border-radius: 12px; background: rgba(255, 255, 255, .02); padding: 11px 12px; }
 .ficha dl { display: grid; grid-template-columns: 1fr 1fr; gap: 7px 12px; margin: 8px 0 0; }

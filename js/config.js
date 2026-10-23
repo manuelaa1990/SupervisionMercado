@@ -117,7 +117,19 @@ window.CONFIG_FLOTA = {
     recalentamiento: { min: 2, max: 15 },
     subenfriamiento: { min: 2, max: 10 },
     aumentoAmbiente: { ventanaMin: 15, aviso: 4 },
-    aumentoEspacio: { ventanaMin: 15, aviso: 5 }
+    aumentoEspacio: { ventanaMin: 15, aviso: 5 },
+    ciclajePresion: {
+      ventanaMin: 12,
+      minimoCiclos: 3,
+      saltoPsi: 20,
+      toleranciaPsi: 3,
+      duracionMinSeg: 25,
+      duracionMaxSeg: 120,
+      ultimoCicloMin: 3,
+      presionBajaPsi: 5,
+      periodoFugaMs: 60000,
+      periodoContactorMs: 30000
+    }
   },
 
   fallas: {
@@ -197,6 +209,20 @@ window.CONFIG_FLOTA = {
       titulo: 'Equipo sin señal',
       detalle: 'No se reciben lecturas nuevas del equipo de monitoreo.',
       sugerencia: 'Revisar energía, red WiFi y conexión del equipo. Si el equipo está apagado, avisar al técnico.'
+    },
+    ciclaje_presion_baja: {
+      nombre: 'Ciclaje por baja presión (posible fuga)',
+      gravedad: 'alarma',
+      titulo: 'Ciclaje por baja presión de succión',
+      detalle: 'La presión de succión cae a su mínimo, sube 20 PSI o más y vuelve a caer repetidamente. El mínimo está por debajo de lo esperado para el refrigerante.',
+      sugerencia: 'Buscar fugas en el circuito, revisar carga de refrigerante, presostato de baja y válvula de expansión. Si no aparece fuga, revisar también el contactor y los arranques del compresor.'
+    },
+    contactor_defectuoso: {
+      nombre: 'Arranques repetitivos por contactor',
+      gravedad: 'alarma',
+      titulo: 'Arranques repetitivos del compresor',
+      detalle: 'La presión de succión repite subidas y bajadas de 20 PSI o más en pocos minutos, sin que el mínimo esté claramente por debajo de lo esperado. El patrón puede corresponder a un contactor, relé o control de arranque defectuoso.',
+      sugerencia: 'Revisar contactor, relé de arranque, protección térmica, borneras y alimentación del compresor. No manipule el equipo sin tomar las medidas de seguridad.'
     }
   }
 };

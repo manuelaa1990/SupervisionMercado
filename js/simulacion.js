@@ -108,7 +108,7 @@
       ['Flores · Vitrina', 'Entrada', 'HBP', 'R-134a', 'Electrónica', 12, null],
       ['Cárnicos · Cámara 1', 'Sala de cámaras', 'LBP', 'R-404A', 'Termostática', -18, 'sin_datos'],
       ['Cárnicos · Cámara 2', 'Sala de cámaras', 'LBP', 'R-448A', 'Electrónica', -18, null],
-      ['Postres · Vitrina', 'Pasillo 3', 'MBP', 'R-134a', 'Termostática', 3, null]
+      ['Postres · Vitrina', 'Pasillo 3', 'MBP', 'R-134a', 'Termostática', 3, 'ciclaje_presion_baja']
     ];
 
     return base.map((fila, indice) => {
@@ -237,6 +237,20 @@
     };
   }
 
+  /* Genera un pulso periódico de presión para simular ciclaje.
+     La fase 0..1 permite subida, meseta, bajada y reposo dentro de cada ciclo. */
+  function pulsoCiclo(ts, periodoMs, inicio, subida, alta, bajada) {
+    const fase = (((ts % periodoMs) + periodoMs) % periodoMs) / periodoMs;
+    const finSubida = inicio + subida;
+    const finAlta = finSubida + alta;
+    const finBajada = finAlta + bajada;
+    if (fase < inicio) return 0;
+    if (fase < finSubida) return (fase - inicio) / subida;
+    if (fase < finAlta) return 1;
+    if (fase < finBajada) return 1 - (fase - finAlta) / bajada;
+    return 0;
+  }
+
   /* ------------------------------ LECTURAS -------------------------------- */
 
   function generarLectura(equipo, ts, opciones) {
@@ -264,6 +278,18 @@
     let temp5 = ambienteNormal;
     let presionBaja = presionSaturacion(equipo.refrigerante, evap) + ruido(1.4);
     let presionAlta = presionSaturacion(equipo.refrigerante, cond) + ruido(3);
+
+    const cfgCiclo = CFG.limites.ciclajePresion;
+    const esFugaCiclo = equipo.falla === 'ciclaje_presion_baja';
+    const esContactor = equipo.falla === 'contactor_defectuoso';
+    if (esFugaCiclo) presionBaja -= 6;
+    let pulsoPresion = 0;
+    if (esFugaCiclo) {
+      pulsoPresion = pulsoCiclo(ts, cfgCiclo.periodoFugaMs, 0.30, 0.10, 0.20, 0.15);
+    } else if (esContactor) {
+      pulsoPresion = pulsoCiclo(ts, cfgCiclo.periodoContactorMs, 0.20, 0.06, 0.18, 0.10);
+    }
+    presionBaja += pulsoPresion * (esFugaCiclo ? 26 : 22);
 
     switch (equipo.falla) {
       case 'espacio_alto':
@@ -347,6 +373,77 @@
     return estado.lecturas[equipoId] || [];
   }
 
+  /* Detecta ciclaje de la presión de succión tomando como referencia la
+     presión mínima observada en la ventana reciente. Un ciclo válido baja
+     al mínimo, sube al menos 20 PSI y vuelve al mínimo. */
+  function analizarCiclajePresion(equipo, t) {
+    const cfg = CFG.limites.ciclajePresion;
+    const historial = historialDe(equipo.id);
+    if (!historial.length) return null;
+
+    const desde = t - cfg.ventanaMin * 60000;
+    const ventana = historial.filter((lectura) => lectura.ts >= desde);
+    if (ventana.length < 8) return null;
+
+    let presionMinima = Infinity;
+    ventana.forEach((lectura) => {
+      if (lectura.presion_baja < presionMinima) presionMinima = lectura.presion_baja;
+    });
+
+    const umbralBajo = presionMinima + cfg.toleranciaPsi;
+    const umbralAlto = presionMinima + cfg.saltoPsi;
+    const ciclos = [];
+    let estado = 'bajo';
+    let inicioBajo = null;
+    let pico = null;
+
+    ventana.forEach((lectura) => {
+      const presion = lectura.presion_baja;
+      if (estado === 'bajo') {
+        if (presion <= umbralBajo) {
+          if (inicioBajo == null) inicioBajo = lectura.ts;
+          pico = presion;
+        } else if (inicioBajo != null && presion >= umbralAlto) {
+          estado = 'alto';
+          pico = presion;
+        }
+        return;
+      }
+
+      if (presion > pico) pico = presion;
+      if (presion <= umbralBajo) {
+        if (inicioBajo != null) {
+          const duracion = lectura.ts - inicioBajo;
+          if (duracion >= cfg.duracionMinSeg * 1000 && duracion <= cfg.duracionMaxSeg * 1000) {
+            ciclos.push({ inicio: inicioBajo, fin: lectura.ts, duracion: duracion, pico: pico });
+          }
+        }
+        estado = 'bajo';
+        inicioBajo = lectura.ts;
+        pico = presion;
+      }
+    });
+
+    const tipo = CFG.tipos[equipo.tipo] || CFG.tipos.MBP;
+    const objetivo = Number.isFinite(equipo.objetivo) ? equipo.objetivo : tipo.objetivo;
+    const evap = objetivo - (equipo.tipo === 'LBP' ? 6 : 4);
+    const presionEsperada = presionSaturacion(equipo.refrigerante, evap);
+    const ultimo = ciclos.length ? ciclos[ciclos.length - 1] : null;
+    const duracionMedia = ciclos.length
+      ? ciclos.reduce((suma, ciclo) => suma + ciclo.duracion, 0) / ciclos.length
+      : 0;
+
+    return {
+      ciclos: ciclos,
+      total: ciclos.length,
+      presionMinima: presionMinima,
+      presionEsperada: presionEsperada,
+      esBaja: presionMinima <= presionEsperada - cfg.presionBajaPsi,
+      reciente: ultimo ? t - ultimo.fin <= cfg.ultimoCicloMin * 60000 : false,
+      duracionMedia: duracionMedia
+    };
+  }
+
   function agregarLectura(equipo, ts) {
     if (equipo.falla === 'sin_datos') return;
     const lectura = generarLectura(equipo, ts, { ramp: 1 });
@@ -394,6 +491,9 @@
     const condiciones = [];
     const limites = limitesEspacio(equipo);
     const v = lectura.tempEspacio;
+    const cfgCiclo = CFG.limites.ciclajePresion;
+    const ciclaje = analizarCiclajePresion(equipo, t);
+    const ciclajeActivo = !!ciclaje && ciclaje.reciente && ciclaje.total >= cfgCiclo.minimoCiclos;
 
     if (v > limites.alarmaAlto) {
       condiciones.push(condicion('espacio_alto', 'alarma',
@@ -435,28 +535,30 @@
         { relacion: relacion }));
     }
 
-    const saturacionSuccion = tempSaturacion(equipo.refrigerante, lectura.presion_baja);
-    const recalentamiento = lectura.temp1 - saturacionSuccion;
-    if (recalentamiento < CFG.limites.recalentamiento.min) {
-      condiciones.push(condicion('recalentamiento_bajo', 'sugerencia',
-        'Recalentamiento de ' + numero(recalentamiento, 1) + ' K; se esperaba al menos ' + CFG.limites.recalentamiento.min + ' K.',
-        { recalentamiento: recalentamiento }));
-    } else if (recalentamiento > CFG.limites.recalentamiento.max) {
-      condiciones.push(condicion('recalentamiento_alto', 'sugerencia',
-        'Recalentamiento de ' + numero(recalentamiento, 1) + ' K; se esperaba menos de ' + CFG.limites.recalentamiento.max + ' K.',
-        { recalentamiento: recalentamiento }));
-    }
+    if (!ciclajeActivo) {
+      const saturacionSuccion = tempSaturacion(equipo.refrigerante, lectura.presion_baja);
+      const recalentamiento = lectura.temp1 - saturacionSuccion;
+      if (recalentamiento < CFG.limites.recalentamiento.min) {
+        condiciones.push(condicion('recalentamiento_bajo', 'sugerencia',
+          'Recalentamiento de ' + numero(recalentamiento, 1) + ' K; se esperaba al menos ' + CFG.limites.recalentamiento.min + ' K.',
+          { recalentamiento: recalentamiento }));
+      } else if (recalentamiento > CFG.limites.recalentamiento.max) {
+        condiciones.push(condicion('recalentamiento_alto', 'sugerencia',
+          'Recalentamiento de ' + numero(recalentamiento, 1) + ' K; se esperaba menos de ' + CFG.limites.recalentamiento.max + ' K.',
+          { recalentamiento: recalentamiento }));
+      }
 
-    const saturacionDescarga = tempSaturacion(equipo.refrigerante, lectura.presion_alta);
-    const subenfriamiento = saturacionDescarga - lectura.temp4;
-    if (subenfriamiento < CFG.limites.subenfriamiento.min) {
-      condiciones.push(condicion('subenfriamiento_bajo', 'sugerencia',
-        'Subenfriamiento de ' + numero(subenfriamiento, 1) + ' K; puede faltar refrigerante.',
-        { subenfriamiento: subenfriamiento }));
-    } else if (subenfriamiento > CFG.limites.subenfriamiento.max) {
-      condiciones.push(condicion('subenfriamiento_alto', 'sugerencia',
-        'Subenfriamiento de ' + numero(subenfriamiento, 1) + ' K; revisar el condensador.',
-        { subenfriamiento: subenfriamiento }));
+      const saturacionDescarga = tempSaturacion(equipo.refrigerante, lectura.presion_alta);
+      const subenfriamiento = saturacionDescarga - lectura.temp4;
+      if (subenfriamiento < CFG.limites.subenfriamiento.min) {
+        condiciones.push(condicion('subenfriamiento_bajo', 'sugerencia',
+          'Subenfriamiento de ' + numero(subenfriamiento, 1) + ' K; puede faltar refrigerante.',
+          { subenfriamiento: subenfriamiento }));
+      } else if (subenfriamiento > CFG.limites.subenfriamiento.max) {
+        condiciones.push(condicion('subenfriamiento_alto', 'sugerencia',
+          'Subenfriamiento de ' + numero(subenfriamiento, 1) + ' K; revisar el condensador.',
+          { subenfriamiento: subenfriamiento }));
+      }
     }
 
     const historial = historialDe(equipo.id);
@@ -473,6 +575,37 @@
         condiciones.push(condicion('ambiente_sube', 'aviso',
           'El ambiente subió ' + numero(deltaAmbiente, 1) + ' °C en los últimos ' + CFG.limites.aumentoAmbiente.ventanaMin + ' minutos.',
           { delta: deltaAmbiente }));
+      }
+    }
+
+    if (ciclajeActivo) {
+      const duracionMedia = Math.max(1, Math.round(ciclaje.duracionMedia / 1000));
+      if (ciclaje.esBaja) {
+        condiciones.push(condicion('ciclaje_presion_baja', 'alarma',
+          'La presión de succión cayó a ' + numero(ciclaje.presionMinima, 0) + ' PSI (mínimo reciente) y completó ' +
+          ciclaje.total + ' ciclos de al menos ' + cfgCiclo.saltoPsi + ' PSI, con una duración media de ' +
+          duracionMedia + ' s. El mínimo está ' + numero(ciclaje.presionEsperada - ciclaje.presionMinima, 0) +
+          ' PSI por debajo de lo esperado.',
+          {
+            presionMinima: ciclaje.presionMinima,
+            presionEsperada: ciclaje.presionEsperada,
+            ciclos: ciclaje.total,
+            saltoPsi: cfgCiclo.saltoPsi,
+            duracionMedia: duracionMedia
+          }));
+      } else {
+        condiciones.push(condicion('contactor_defectuoso', 'alarma',
+          'Se detectaron ' + ciclaje.total + ' ciclos de presión de al menos ' + cfgCiclo.saltoPsi +
+          ' PSI en los últimos ' + cfgCiclo.ventanaMin + ' min, con un mínimo de ' + numero(ciclaje.presionMinima, 0) +
+          ' PSI cerca de lo esperado y una duración media de ' + duracionMedia +
+          ' s. Patrón compatible con contactor, relé o control de arranque.',
+          {
+            presionMinima: ciclaje.presionMinima,
+            presionEsperada: ciclaje.presionEsperada,
+            ciclos: ciclaje.total,
+            saltoPsi: cfgCiclo.saltoPsi,
+            duracionMedia: duracionMedia
+          }));
       }
     }
 
@@ -681,14 +814,22 @@
   function procesoDe(equipo) {
     const lectura = ultimaLectura(equipo.id);
     if (!lectura) return null;
-    const saturacionSuccion = tempSaturacion(equipo.refrigerante, lectura.presion_baja);
+    const ciclaje = analizarCiclajePresion(equipo, ahora());
+    const ciclajeActivo = !!ciclaje && ciclaje.reciente &&
+      ciclaje.total >= CFG.limites.ciclajePresion.minimoCiclos;
+    const presionBase = ciclajeActivo ? ciclaje.presionMinima : lectura.presion_baja;
+    const saturacionSuccion = tempSaturacion(equipo.refrigerante, presionBase);
     const saturacionDescarga = tempSaturacion(equipo.refrigerante, lectura.presion_alta);
     return Object.assign({}, lectura, {
       saturacionSuccion: saturacionSuccion,
       recalentamiento: lectura.temp1 - saturacionSuccion,
       saturacionDescarga: saturacionDescarga,
       subenfriamiento: saturacionDescarga - lectura.temp4,
-      relacion: (lectura.presion_alta + 14.7) / Math.max(1, lectura.presion_baja + 14.7)
+      relacion: (lectura.presion_alta + 14.7) / Math.max(1, presionBase + 14.7),
+      presionMinima: ciclaje ? ciclaje.presionMinima : lectura.presion_baja,
+      presionEsperada: ciclaje ? ciclaje.presionEsperada : null,
+      presionBase: presionBase,
+      ciclaje: ciclaje
     });
   }
 
@@ -776,7 +917,7 @@
     const candidatos = disponibles.length ? disponibles : estado.equipos;
     if (!candidatos.length) return null;
     const equipo = candidatos[Math.floor(Math.random() * candidatos.length)];
-    const opciones = ['espacio_alto', 'descarga_alta', 'ambiente_sube', 'espacio_sube', 'recalentamiento_bajo', 'sin_datos'];
+    const opciones = ['espacio_alto', 'descarga_alta', 'ambiente_sube', 'espacio_sube', 'recalentamiento_bajo', 'ciclaje_presion_baja', 'contactor_defectuoso', 'sin_datos'];
     const tipo = opciones[Math.floor(Math.random() * opciones.length)];
     aplicarFalla(equipo.id, tipo);
     return { equipo: equipo, tipo: tipo };

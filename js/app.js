@@ -140,7 +140,7 @@
     if (!forzar && firma === ui.firmaResumen) return;
     ui.firmaResumen = firma;
     if (ids.tituloFlota) {
-      ids.tituloFlota.textContent = 'Hipermercado · ' + resumen.total + (resumen.total === 1 ? ' equipo' : ' equipos');
+      ids.tituloFlota.textContent = 'SupervisionMercado · ' + resumen.total + (resumen.total === 1 ? ' equipo' : ' equipos');
     }
 
     const items = [
@@ -348,13 +348,26 @@
     const shClase = sh < CFG.limites.recalentamiento.min || sh > CFG.limites.recalentamiento.max ? 'aviso' : 'ok';
     const scClase = sc < CFG.limites.subenfriamiento.min || sc > CFG.limites.subenfriamiento.max ? 'aviso' : 'ok';
     const rcClase = rc > CFG.limites.relacionCompresion.alarma ? 'alarma' : rc > CFG.limites.relacionCompresion.aviso ? 'aviso' : 'ok';
+    const pmBaja = Number.isFinite(proceso.presionEsperada) &&
+      proceso.presionMinima <= proceso.presionEsperada - CFG.limites.ciclajePresion.presionBajaPsi;
+    const pmClase = pmBaja ? 'alarma' : 'ok';
+    const ciclos = proceso.ciclaje ? proceso.ciclaje.total : 0;
+    const ciclosAlarma = ciclos >= CFG.limites.ciclajePresion.minimoCiclos &&
+      proceso.ciclaje && proceso.ciclaje.reciente;
+    const ciclosClase = ciclosAlarma ? 'alarma' : 'ok';
 
     const derivados =
       '<div class="derivado ' + shClase + '"><span>Recalentamiento</span><strong>' + numero(sh, 1) + ' K</strong></div>' +
       '<div class="derivado ' + scClase + '"><span>Subenfriamiento</span><strong>' + numero(sc, 1) + ' K</strong></div>' +
-      '<div class="derivado ' + rcClase + '"><span>Relación de compresión</span><strong>' + numero(rc, 1) + ' : 1</strong></div>';
+      '<div class="derivado ' + rcClase + '"><span>Relación de compresión</span><strong>' + numero(rc, 1) + ' : 1</strong></div>' +
+      '<div class="derivado ' + pmClase + '"><span>P. succión mínima</span><strong>' + numero(proceso.presionMinima, 0) + ' PSI</strong></div>' +
+      '<div class="derivado ' + ciclosClase + '"><span>Ciclos de succión</span><strong>' + ciclos + (ciclos === 1 ? ' ciclo' : ' ciclos') + '</strong></div>';
+    const notaCiclaje = ciclosAlarma
+      ? '<p class="nota-ciclaje">Ciclaje detectado: recalentamiento y relación de compresión se calculan con la P. succión mínima (' +
+        numero(proceso.presionBase, 0) + ' PSI).</p>'
+      : '';
 
-    return '<div class="proceso-grid">' + celdas + '</div><div class="derivados">' + derivados + '</div>';
+    return '<div class="proceso-grid">' + celdas + '</div><div class="derivados">' + derivados + '</div>' + notaCiclaje;
   }
 
   function opcionesFalla(seleccionada) {
