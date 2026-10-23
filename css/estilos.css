@@ -543,6 +543,14 @@ h1 {
   font-size: 20px;
   line-height: 1;
   cursor: pointer;
+
+   .icono-cerrar.btn-peligro-header {
+  color: var(--muted);
+}
+.icono-cerrar.btn-peligro-header:hover {
+  color: #ffb0b2;
+  border-color: rgba(255, 95, 99, .45);
+  background: rgba(255, 95, 99, .1);
 }
 
 .icono-cerrar:hover { color: var(--text); border-color: var(--line-fuerte); background: rgba(255, 255, 255, .07); }
