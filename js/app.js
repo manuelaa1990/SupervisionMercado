@@ -394,7 +394,7 @@
       ? estado.alertaPrincipal.titulo + (estado.reconocida ? ' · en revisión' : '')
       : 'Todo dentro de los límites configurados.';
 
-       const cabecera =
+    const cabecera =
       '<div class="drawer-cabecera">' +
         '<div><p class="eyebrow">' + escapar(etiquetaTipo(equipo.tipo)) + ' · ' + escapar(equipo.refrigerante) + '</p>' +
           '<h2 id="drawerTitulo">' + escapar(equipo.nombre) + '</h2>' +
@@ -459,7 +459,7 @@
         '</div>' +
       '</section>';
 
-       ids.drawerContenido.innerHTML = cabecera +
+    ids.drawerContenido.innerHTML = cabecera +
       '<div class="drawer-cuerpo">' + principal + seccionAlertas + seccionProceso + ficha + historialSeccion + simulacion + '</div>';
   }
 
@@ -750,7 +750,6 @@
       const tarjeta = evento.target.closest('.tarjeta');
       if (!tarjeta) return;
       abrirDrawer(tarjeta.dataset.id);
-       
     });
 
     ids.chips.addEventListener('click', (evento) => {
@@ -851,7 +850,7 @@
       ui.logEquipo = ids.filtroEquipo.value;
       renderRegistro();
     });
-         // Botón de pantalla completa
+
     const btnPantalla = $('btnPantallaCompleta');
     if (btnPantalla) {
       btnPantalla.addEventListener('click', () => {
@@ -866,6 +865,7 @@
         }
       });
     }
+  }
 
   /* --------------------------------- ARRANQUE -------------------------------- */
 
