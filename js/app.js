@@ -750,6 +750,7 @@
       const tarjeta = evento.target.closest('.tarjeta');
       if (!tarjeta) return;
       abrirDrawer(tarjeta.dataset.id);
+       
     });
 
     ids.chips.addEventListener('click', (evento) => {
@@ -850,7 +851,21 @@
       ui.logEquipo = ids.filtroEquipo.value;
       renderRegistro();
     });
-  }
+         // Botón de pantalla completa
+    const btnPantalla = $('btnPantallaCompleta');
+    if (btnPantalla) {
+      btnPantalla.addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(err => {
+            console.log(`Error al intentar pantalla completa: ${err.message}`);
+          });
+        } else {
+          if (document.exitFullscreen) {
+            document.exitFullscreen();
+          }
+        }
+      });
+    }
 
   /* --------------------------------- ARRANQUE -------------------------------- */
 
