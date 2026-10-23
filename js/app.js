@@ -394,13 +394,16 @@
       ? estado.alertaPrincipal.titulo + (estado.reconocida ? ' · en revisión' : '')
       : 'Todo dentro de los límites configurados.';
 
-    const cabecera =
+       const cabecera =
       '<div class="drawer-cabecera">' +
         '<div><p class="eyebrow">' + escapar(etiquetaTipo(equipo.tipo)) + ' · ' + escapar(equipo.refrigerante) + '</p>' +
           '<h2 id="drawerTitulo">' + escapar(equipo.nombre) + '</h2>' +
           '<p>' + escapar(equipo.ubicacion) + ' · ' + escapar(equipo.expansion) + ' · ' + escapar(equipo.compresor) + '</p>' +
         '</div>' +
-        '<button type="button" class="icono-cerrar" data-cerrar-drawer aria-label="Cerrar detalle">×</button>' +
+        '<div style="display: flex; gap: 6px; align-items: center;">' +
+          '<button type="button" class="icono-cerrar btn-peligro-header" data-accion="eliminar-equipo" aria-label="Eliminar cuadro" title="Eliminar cuadro">🗑️</button>' +
+          '<button type="button" class="icono-cerrar" data-cerrar-drawer aria-label="Cerrar detalle">×</button>' +
+        '</div>' +
       '</div>';
 
     const principal =
@@ -456,15 +459,8 @@
         '</div>' +
       '</section>';
 
-    const eliminacion =
-      '<section class="zona-peligro">' +
-        '<h3 class="seccion-titulo">Eliminar cuadro</h3>' +
-        '<p>Quita este cuadro de la flota y borra sus lecturas y su historial de alertas. No se puede deshacer.</p>' +
-        '<button type="button" class="btn-mini btn-mini-peligro" data-accion="eliminar-equipo">Eliminar cuadro</button>' +
-      '</section>';
-
-    ids.drawerContenido.innerHTML = cabecera +
-      '<div class="drawer-cuerpo">' + principal + seccionAlertas + seccionProceso + ficha + historialSeccion + simulacion + eliminacion + '</div>';
+       ids.drawerContenido.innerHTML = cabecera +
+      '<div class="drawer-cuerpo">' + principal + seccionAlertas + seccionProceso + ficha + historialSeccion + simulacion + '</div>';
   }
 
   function abrirDrawer(equipoId, silencioso) {
